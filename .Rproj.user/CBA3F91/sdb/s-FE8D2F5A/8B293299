@@ -1,0 +1,20 @@
+{
+    "collab_server" : "",
+    "contents" : "#source(\"functions.R\")\n#require(here)\n\nrequire(ecoli2.db)\nEcoli_data <- read.table(\"datos/Ecoli_data.csv\", sep= \",\", dec = \".\",header = T)\n#anno_data <- read.table(\"datos/Ecoli_ASv2.na36.annot.csv\",sep=\",\",na.strings = \"---\")\ncorrespondencia <- read.table(\"datos/correspondencia.csv\",sep=\",\",na.strings = \"---\", header = T)\n",
+    "created" : 1540581820584.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3046453122",
+    "id" : "8B293299",
+    "lastKnownWriteTime" : 1540878338,
+    "last_content_update" : 1540878339239,
+    "path" : "~/Estadística Genómica/Trabajo/load.R",
+    "project_path" : "load.R",
+    "properties" : {
+    },
+    "relative_order" : 4,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
