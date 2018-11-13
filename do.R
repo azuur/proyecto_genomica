@@ -22,7 +22,7 @@ GENIE_TIME <- system.time(GENIE_NET <- GENIE3(as.matrix(datos),verbose = T,nCore
 ls() %>% savelist()
 
 #EL LAMBDA ESTÁ FEO... EN EL SENTIDO DE SER MUY DISTINTO AL VALOR DE 1 ORIGINAL
-NARRO_TIME <- system.time(NARRO_NET <- narromi(t(datos),MIM = MIM_E_NET,verbose = T,lambda=0.3))
+NARRO_TIME <- system.time(NARRO_NET <- narromi(t(datos),MIM = MIM_E_NET,verbose = T,lambda=0.3,parallel = T))
 ls() %>% savelist()
 
 TIGRE_TIME <- system.time(TIGRE_NET <- tigress(t(datos),verbose = T)); TIGRE_TIME
