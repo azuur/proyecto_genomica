@@ -127,6 +127,57 @@ narromi<-function(x, MIM =NULL, t = 0.6, estimator = "mi.empirical", disc = "equ
 }
 
 
+
+
+narromi1<-function(x, MIM =NULL, t = 0.6, estimator = "mi.empirical", disc = "equalfreq",lambda = 1,theta = 0.05, eps = 0.05,verbose = FALSE, ...){
+  require("minet")
+  require("infotheo")
+  require("flare")
+  
+  if(is.null(MIM)){MIM <- build.mim(x,estimator,...)}
+  
+  ##OJOOO!!
+  x <- scale(x)
+  
+  nvar <- nrow(MIM)
+  
+  if(theta == "choose"){theta <- quantile(sort(abs(MIM))[-c(1:nvar)],0.15)}
+  
+  if(verbose == TRUE){ print("Building/finding MI matrix.")}
+  MIM[abs(MIM)<theta] <- 0
+  diag(MIM) <- 0
+  net <- matrix(0,nrow = nvar, ncol = nvar)
+  
+  for(i in 1:nvar){
+    if(verbose == TRUE){print( sprintf("Executing RO step on variable %s of %s.",i,nvar) )}
+    
+    candidate_TF <- unname(which(MIM[,i]!=0))
+    zeroes <- 1
+    #    huh <-0
+    while(zeroes > 0){
+      if(length(candidate_TF)==0){break}
+      RO <- slim(X = as.matrix(x[,candidate_TF]), Y = x[,i],
+                 method = "lq", q=1, lambda=lambda,verbose = F, nlambda = 1)#,...)
+      zero <- abs(RO$beta) < eps
+      candidate_TF <- candidate_TF[!zero]
+      zeroes <- sum(zero)
+      #      huh <- huh+1
+      #      print(huh)
+    }
+    
+    if(length(candidate_TF)>0){
+      transformed_MI <- MIM_transform(MIM[,i][candidate_TF])
+      net[,i][candidate_TF]<-sign(RO$beta)*(t*transformed_MI + (1-t)*abs(RO$beta))
+    }
+    
+    
+  }
+  return(net)
+}
+
+
+
+
 ##SAVE AND LOAD R OBJECTS
 saveobj<-function(x, gitignore = F){
   dir <- "Robjects/"
