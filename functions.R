@@ -16,6 +16,10 @@ require(latticeExtra)
 require(vsn)
 require(doParallel)
 require(doRNG)
+require(infotheo)
+require(flare)
+require(parallel)
+
 #require(janitor)
 
 
@@ -61,49 +65,64 @@ tigress<-function(x,alpha = 0.4,L = 2,R = 1000, verbose=FALSE){ #optimal perfoma
 }
 
 ##NARROMI
-narromi<-function(x, MIM =NULL, t = 0.6, estimator = "mi.empirical", disc = "equalfreq",lambda = 1,theta = 0.05, eps = 0.05,verbose = FALSE, ...){
-  require("minet")
-  require("infotheo")
-  require("flare")
-  
+RO_alg <- function(i,x,MIM,lambda,eps){
+  candidate_TF <- unname(which(MIM[,i]!=0))
+  zeroes <- 1
+  #    huh <-0 
+  while(zeroes > 0){
+    if(length(candidate_TF)==0){break}
+    RO <- slim(X = as.matrix(x[,candidate_TF]), Y = x[,i], 
+               method = "lq", q=1, lambda=lambda,verbose = F, nlambda = 1)#,...)
+    zero <- abs(RO$beta) < eps
+    candidate_TF <- candidate_TF[!zero]
+    zeroes <- sum(zero)
+    #      huh <- huh+1
+    #      print(huh)
+  }
+  res <- list(candidate_TF=candidate_TF,beta=RO$beta)
+  return(res)
+}
+
+narromi<-function(x, MIM =NULL, t = 0.6, estimator = "mi.empirical", disc = "equalfreq",lambda = 1,theta = 0.05, eps = 0.05,verbose = FALSE, parallel = F, numcores = NULL,...){
+
   if(is.null(MIM)){MIM <- build.mim(x,estimator,...)}
-  
-  ##OJOOO!!
+
+  #VARIABLE DEF
+  ##OJOOO!! ESTÁ ESCALADO
   x <- scale(x)
-  
+  x <- as.matrix(x)
   nvar <- nrow(MIM)
-  
   if(theta == "choose"){theta <- quantile(sort(abs(MIM))[-c(1:nvar)],0.15)}
-  
   if(verbose == TRUE){ print("Building/finding MI matrix.")}
+  MIM <- as.matrix(MIM)
   MIM[abs(MIM)<theta] <- 0
   diag(MIM) <- 0
   net <- matrix(0,nrow = nvar, ncol = nvar)
   
-  for(i in 1:nvar){
+  RO_on_var_num <- function(i){
     if(verbose == TRUE){print( sprintf("Executing RO step on variable %s of %s.",i,nvar) )}
-    
-    candidate_TF <- unname(which(MIM[,i]!=0))
-    zeroes <- 1
-#    huh <-0 
-    while(zeroes > 0){
-      if(length(candidate_TF)==0){break}
-      RO <- slim(X = as.matrix(x[,candidate_TF]), Y = x[,i], 
-                 method = "lq", q=1, lambda=lambda,verbose = F, nlambda = 1)#,...)
-      zero <- abs(RO$beta) < eps
-      candidate_TF <- candidate_TF[!zero]
-      zeroes <- sum(zero)
-#      huh <- huh+1
-#      print(huh)
-    }
-    
+    vect <- rep(0,nvar)
+    RO <- RO_alg(i,x=x,MIM=MIM,lambda=lambda,eps=eps)
+    candidate_TF <- RO$candidate_TF
+    beta <- RO$beta
     if(length(candidate_TF)>0){
       transformed_MI <- MIM_transform(MIM[,i][candidate_TF])
-      net[,i][candidate_TF]<-sign(RO$beta)*(t*transformed_MI + (1-t)*abs(RO$beta))
+      vect[candidate_TF]<-sign(RO$beta)*(t*transformed_MI + (1-t)*abs(RO$beta))
     }
-    
-    
+    return(vect)
   }
+#  684486094
+  if(parallel == T){
+    if(is.null(numcores)){ numcores <- parallel::detectCores() - 1 }
+    cl <- makeCluster(numcores)
+    parallel::clusterExport(cl = cl,list("RO_alg","slim","MIM_transform"))
+    net <- parSapply(cl = cl,X = 1:nvar, FUN = RO_on_var_num)
+    stopCluster(cl)
+  } else{
+    net <- sapply(X = 1:nvar, FUN = RO_on_var_num)
+  }
+
+  dimnames(net) <- dimnames(MIM)
   return(net)
 }
 
